@@ -1,0 +1,8 @@
+{
+    "name": "cpp-practice",
+    "version-string": "1.0.0",
+    "dependencies": [
+        "cxxopts",
+        "indicators"
+    ]
+}

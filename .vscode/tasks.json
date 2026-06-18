@@ -1,0 +1,89 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake: Configure",
+            "type": "shell",
+            "command": "call \"C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat\" && set VCPKG_ROOT=C:\\DASI\\Code\\vcpkg && cmake --preset msvc-debug",
+            "group": "build",
+            "options": {
+                "shell": {
+                    "executable": "cmd.exe",
+                    "args": [
+                        "/c"
+                    ]
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "detail": "Runs CMake configure within the x64 Native Tools Command Prompt."
+        },
+        {
+            "label": "CMake: Build",
+            "type": "shell",
+            "command": "call \"C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat\" && set VCPKG_ROOT=C:\\DASI\\Code\\vcpkg && cmake --build build/msvc-debug",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options": {
+                "shell": {
+                    "executable": "cmd.exe",
+                    "args": [
+                        "/c"
+                    ]
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [
+                "$msCompile"
+            ],
+            "detail": "Runs CMake build within the x64 Native Tools Command Prompt."
+        },
+        {
+            "label": "CMake: Build Clean",
+            "type": "shell",
+            "command": "call \"C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat\" && set VCPKG_ROOT=C:\\DASI\\Code\\vcpkg && cmake --build build/msvc-debug --target clean",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options": {
+                "shell": {
+                    "executable": "cmd.exe",
+                    "args": [
+                        "/c"
+                    ]
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [
+                "$msCompile"
+            ],
+            "detail": "Cleans CMake build within the x64 Native Tools Command Prompt."
+        },
+        {
+            "label": "Run: Execute Tests",
+            "type": "shell",
+            "command": ".\\build\\msvc-debug\\tests\\test.exe",
+            "group": {
+                "kind": "test"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "detail": "Runs the built test executable."
+        }
+    ]
+}
