@@ -2,6 +2,9 @@
 # include <numeric>
 # include <cxxopts.hpp>
 
+# include "ring_buffer.hpp"
+# include "unique_pointer.hpp"
+
 namespace fs = std::filesystem;
 
 int main(int argc, char *argv[]) {
