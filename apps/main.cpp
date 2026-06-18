@@ -4,6 +4,7 @@
 # include <string>
 # include <utility>
 # include <cxxopts.hpp>
+# include <type_traits>
 
 # include "ring_buffer.hpp"
 # include "unique_pointer.hpp"
@@ -193,6 +194,83 @@ int main() {
     test_interleaved_operations();
     test_move_only_type();
 
-    std::cout << "All RingBuffer tests passed.\n";
+    std::cout << "All RingBuffer tests passed." << std::endl;
+
+    static_assert(!std::is_copy_constructible_v<UniquePtr<Tracker>>);
+    static_assert(!std::is_copy_assignable_v<UniquePtr<Tracker>>);
+    static_assert(std::is_move_constructible_v<UniquePtr<Tracker>>);
+    static_assert(std::is_move_assignable_v<UniquePtr<Tracker>>);
+
+    {
+        UniquePtr<Tracker> p(new Tracker(42));
+
+        assert(p.get() != nullptr);
+        assert((*p).value == 42);
+        assert(p->value == 42);
+        assert(Tracker::constructed == 1);
+        assert(Tracker::destroyed == 0);
+    }
+
+    assert(Tracker::destroyed == 1);
+
+    {
+        UniquePtr<Tracker> p1(new Tracker(10));
+        UniquePtr<Tracker> p2(std::move(p1));
+
+        assert(p1.get() == nullptr);
+        assert(p2.get() != nullptr);
+        assert(p2->value == 10);
+    }
+
+    assert(Tracker::destroyed == 2);
+
+    {
+        UniquePtr<Tracker> p1(new Tracker(100));
+        UniquePtr<Tracker> p2(new Tracker(200));
+
+        p2 = std::move(p1);
+
+        assert(p1.get() == nullptr);
+        assert(p2.get() != nullptr);
+        assert(p2->value == 100);
+
+        // The old Tracker(200) should have been destroyed during move assignment.
+        assert(Tracker::destroyed == 3);
+    }
+
+    assert(Tracker::destroyed == 4);
+
+    {
+        UniquePtr<Tracker> p(new Tracker(7));
+
+        Tracker* raw = p.release();
+
+        assert(p.get() == nullptr);
+        assert(raw != nullptr);
+        assert(raw->value == 7);
+
+        // release() transfers ownership out, so UniquePtr should not delete it.
+        delete raw;
+    }
+
+    assert(Tracker::destroyed == 5);
+
+    {
+        UniquePtr<Tracker> p(new Tracker(1));
+        p.reset(new Tracker(2));
+
+        // reset should destroy the old object.
+        assert(Tracker::destroyed == 6);
+        assert(p.get() != nullptr);
+        assert(p->value == 2);
+
+        p.reset();
+
+        assert(p.get() == nullptr);
+        assert(Tracker::destroyed == 7);
+    }
+
+    std::cout << "All UniquePtr tests passed." << std::endl;
+
     return 0;
 }

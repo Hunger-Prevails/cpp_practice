@@ -1,6 +1,26 @@
 # include <optional>
 # include <vector>
 
+
+struct Tracker {
+    static int constructed;
+    static int destroyed;
+
+    int value = 0;
+
+    explicit Tracker(int v) : value(v) {
+        ++constructed;
+    }
+
+    ~Tracker() {
+        ++destroyed;
+    }
+
+    Tracker(const Tracker&) = delete;
+    Tracker& operator=(const Tracker&) = delete;
+};
+
+
 template <typename T>
 class UniquePtr {
 public:
