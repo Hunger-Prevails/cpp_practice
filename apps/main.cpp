@@ -9,10 +9,13 @@
 # include <type_traits>
 # include <cmath>
 # include <Eigen/Core>
+# include <Eigen/Dense>
+# include <stdexcept>
 
 # include "ring_buffer.hpp"
 # include "unique_pointer.hpp"
 # include "rigid_transform.hpp"
+# include "reprojection.hpp"
 
 namespace fs = std::filesystem;
 
@@ -294,9 +297,6 @@ void test_composition_order() {
 
     assert(nearVec(composed, sequential));
 
-    // Expected:
-    // B first: p -> (1, 2, 0)
-    // A second: rotate 90 deg around z -> (-2, 1, 0), then translate -> (-1, 1, 0)
     Eigen::Vector3d expected(-1.0, 1.0, 0.0);
     assert(nearVec(composed, expected));
 }
@@ -310,6 +310,154 @@ void test_rotation_matrix_validity() {
 
     assert(nearMat(should_be_I, Eigen::Matrix3d::Identity()));
     assert(near(T.R.determinant(), 1.0));
+}
+
+Eigen::Matrix3d makeIntrinsics() {
+    Eigen::Matrix3d K;
+    K << 100.0,   0.0, 320.0,
+           0.0, 200.0, 240.0,
+           0.0,   0.0,   1.0;
+    return K;
+}
+
+void test_identity_pose_zero_error() {
+    const Eigen::Matrix3d K = makeIntrinsics();
+    const Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
+    const Eigen::Vector3d t(0.0, 0.0, 0.0);
+
+    std::vector<Eigen::Vector3d> points3D = {
+        { 0.0,  0.0, 2.0},
+        { 1.0,  0.0, 2.0},
+        { 0.0,  1.0, 4.0},
+        {-2.0,  1.0, 2.0}
+    };
+
+    std::vector<Eigen::Vector2d> imagePoints = {
+        {320.0, 240.0},
+        {370.0, 240.0},
+        {320.0, 290.0},
+        {220.0, 340.0}
+    };
+
+    const double err = mean_reprojection_error(
+        points3D, imagePoints, K, R, t);
+
+    assert(near(err, 0.0));
+}
+
+void test_translated_pose_zero_error() {
+    const Eigen::Matrix3d K = makeIntrinsics();
+    const Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
+    const Eigen::Vector3d t(0.5, -0.5, 1.0);
+
+    std::vector<Eigen::Vector3d> points3D = {
+        {0.0, 0.0, 1.0},
+        {1.0, 1.0, 3.0}
+    };
+
+    std::vector<Eigen::Vector2d> imagePoints = {
+        {345.0, 190.0},
+        {357.5, 265.0}
+    };
+
+    const double err = mean_reprojection_error(
+        points3D, imagePoints, K, R, t);
+
+    assert(near(err, 0.0));
+}
+
+void test_rotated_pose_zero_error() {
+    const Eigen::Matrix3d K = makeIntrinsics();
+
+    Eigen::Matrix3d R;
+    R << 0.0, -1.0, 0.0,
+         1.0,  0.0, 0.0,
+         0.0,  0.0, 1.0;
+
+    const Eigen::Vector3d t(0.0, 0.0, 0.0);
+
+    std::vector<Eigen::Vector3d> points3D = {
+        {1.0, 0.0, 4.0},
+        {0.0, 1.0, 2.0}
+    };
+
+    std::vector<Eigen::Vector2d> imagePoints = {
+        {320.0, 290.0},
+        {270.0, 240.0}
+    };
+
+    const double err = mean_reprojection_error(
+        points3D, imagePoints, K, R, t);
+
+    assert(near(err, 0.0));
+}
+
+void test_known_nonzero_error() {
+    const Eigen::Matrix3d K = makeIntrinsics();
+    const Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
+    const Eigen::Vector3d t(0.0, 0.0, 0.0);
+
+    std::vector<Eigen::Vector3d> points3D = {
+        {0.0, 0.0, 2.0},
+        {1.0, 0.0, 2.0},
+        {0.0, 1.0, 4.0}
+    };
+
+    std::vector<Eigen::Vector2d> imagePoints = {
+        {323.0, 244.0},
+        {370.0, 234.0},
+        {312.0, 290.0}
+    };
+
+    const double err = mean_reprojection_error(
+        points3D, imagePoints, K, R, t);
+
+    const double expected = 19.0 / 3.0;
+    assert(near(err, expected));
+}
+
+void test_empty_input_behavior() {
+    const Eigen::Matrix3d K = makeIntrinsics();
+    const Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
+    const Eigen::Vector3d t(0.0, 0.0, 0.0);
+
+    std::vector<Eigen::Vector3d> points3D;
+    std::vector<Eigen::Vector2d> imagePoints;
+
+    bool threw = false;
+
+    try {
+        mean_reprojection_error(points3D, imagePoints, K, R, t);
+    } catch (const std::exception&) {
+        threw = true;
+    }
+
+    assert(threw);
+}
+
+void test_size_mismatch_behavior() {
+    const Eigen::Matrix3d K = makeIntrinsics();
+    const Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
+    const Eigen::Vector3d t(0.0, 0.0, 0.0);
+
+    std::vector<Eigen::Vector3d> points3D = {
+        {0.0, 0.0, 2.0},
+        {1.0, 0.0, 2.0}
+    };
+
+    std::vector<Eigen::Vector2d> imagePoints = {
+        {320.0, 240.0}
+    };
+
+    bool threw = false;
+
+    try {
+        mean_reprojection_error(points3D, imagePoints, K, R, t);
+    } catch (const std::exception&) {
+        threw = true;
+    }
+
+    assert(threw);
 }
 
 int main() {
@@ -408,5 +556,13 @@ int main() {
 
     std::cout << "All SE3 tests passed." << std::endl;
 
+    test_identity_pose_zero_error();
+    test_translated_pose_zero_error();
+    test_rotated_pose_zero_error();
+    test_known_nonzero_error();
+    test_empty_input_behavior();
+    test_size_mismatch_behavior();
+
+    std::cout << "All reprojection error tests passed." << std::endl;
     return 0;
 }
